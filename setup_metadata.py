@@ -7,8 +7,7 @@ from box_sdk_gen import (
 )
 
 def create_portal_metadata_template():
-    #developer_token = os.environ.get("BOX_DEVELOPER_TOKEN")
-    developer_token = 'WkJdujCoGfYG08InKIDhsNL9jKoYj74U'
+    developer_token = os.environ.get("BOX_DEVELOPER_TOKEN")
 
     if not developer_token:
         raise RuntimeError("Set BOX_DEVELOPER_TOKEN in environment variables before running.")

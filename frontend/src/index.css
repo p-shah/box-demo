@@ -1,0 +1,58 @@
+:root {
+  --brand-navy: #0f2942;
+  --brand-navy-deep: #0a1c2e;
+  --brand-navy-light: #1c3f60;
+  --brand-gold: #a9822f;
+  --brand-gold-soft: #cdae6a;
+
+  --surface-page: #f4f5f7;
+  --surface-card: #ffffff;
+  --surface-sunken: #f7f8f9;
+
+  --text-primary: #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted: #898781;
+  --text-on-navy: #f4f5f7;
+  --text-on-navy-muted: #9fb0c2;
+
+  --border: rgba(11, 11, 11, 0.1);
+  --border-strong: rgba(11, 11, 11, 0.16);
+  --gridline: #e1e0d9;
+
+  --good: #0ca30c;
+  --good-text: #006300;
+  --critical: #d03b3b;
+  --warning: #fab219;
+
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --shadow-card: 0 1px 2px rgba(11, 11, 11, 0.06), 0 4px 16px rgba(11, 11, 11, 0.05);
+
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--surface-page);
+  color: var(--text-primary);
+}
+
+button {
+  font-family: inherit;
+}
+
+::selection {
+  background: var(--brand-gold-soft);
+  color: var(--brand-navy-deep);
+}

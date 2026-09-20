@@ -28,8 +28,7 @@ def get_client() -> Client:
     does not require an enterprise ID. Developer tokens are short-lived and
     intended for development and demos, not production integrations.
     """
-    #developer_token = os.environ.get("BOX_DEVELOPER_TOKEN")
-    developer_token = 'WkJdujCoGfYG08InKIDhsNL9jKoYj74U'
+    developer_token = os.environ.get("BOX_DEVELOPER_TOKEN")
     if not developer_token:
         raise RuntimeError("Set BOX_DEVELOPER_TOKEN before running the demo.")
 
