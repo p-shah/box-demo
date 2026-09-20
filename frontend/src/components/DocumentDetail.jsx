@@ -21,11 +21,16 @@ export default function DocumentDetail({ client, documents, onActivity }) {
     .join(',')
 
   useEffect(() => {
-    setSummaryState('idle')
-    setHighlightsState('idle')
+    // A selection already analyzed once is served straight from cache — only
+    // an unseen selection needs the "idle" (unrun) state. Without this check,
+    // returning to a previously-run selection left state stuck at "idle"
+    // while runSummary/runHighlights below silently no-op on a cache hit,
+    // making the "Generate"/"Extract" buttons appear to do nothing.
+    setSummaryState(summaryCache[selectionKey] ? 'done' : 'idle')
+    setHighlightsState(highlightsCache[selectionKey] ? 'done' : 'idle')
     setSummaryError(null)
     setHighlightsError(null)
-  }, [selectionKey])
+  }, [selectionKey, summaryCache, highlightsCache])
 
   if (!client || documents.length === 0) {
     return (
