@@ -164,6 +164,35 @@ def main():
         ),
     )
 
+    # Acme Wealth Client, Account WM-88213 — bridges the Q1 ending value to
+    # the existing Q3 statement's beginning value, so the full-year story
+    # (Q1 loss -> Q2 recovery -> Q3/Q4 growth) reconciles quarter to quarter.
+    build_statement(
+        filename="q2_statement.pdf",
+        client_name="Acme Wealth Client",
+        account_number="WM-88213",
+        quarter_label="Q2 2026",
+        period_label="April 1 - June 30, 2026",
+        beginning=1771339.25,
+        contributions=15000.00,
+        withdrawals=8000.00,
+        net_gain=63971.30,
+        ending=1842310.55,
+        holdings=[
+            ("US Large Cap Equity Fund", "USLCX", 4130.00, 135.20, 558376.00),
+            ("International Equity Fund", "INTLX", 3040.00, 58.15, 176776.00),
+            ("Core Bond Fund", "CBFX", 8370.00, 98.30, 822771.00),
+            ("Municipal Bond Fund", "MUBX", 2150.00, 54.10, 116315.00),
+            ("Cash & equivalents", None, None, None, 168072.55),
+        ],
+        performance_note=(
+            "Portfolio performance rebounded in the second quarter as equity markets "
+            "recovered from the Q1 pullback. Domestic and international equities both "
+            "posted gains, and fixed income continued to provide steady returns. The "
+            "account fully recovered its year-to-date losses by the end of the quarter."
+        ),
+    )
+
     # Acme Wealth Client, Account WM-88213 — the quarter after the existing
     # Q3 2026 statement, continuing the same account's story forward.
     build_statement(
