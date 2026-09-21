@@ -288,10 +288,16 @@ def search_documents(query: str, limit: int = 25) -> list:
     Full-text search across every client's statements at once, via Box's
     real content-search index (file names AND the text inside the PDFs) —
     scoped to the portal root so results never span outside this app's data.
+
+    Box treats a multi-word query as OR by default ("Global Equity" matches
+    any statement containing just "Equity", which is in nearly every fund
+    name here), so the query is quoted for exact-phrase matching instead —
+    "large cap" should mean the phrase, not "large" or "cap" separately.
     """
     client = get_client()
+    phrase = query.replace('"', "").strip()
     results = client.search.search_for_content(
-        query=query,
+        query=f'"{phrase}"',
         ancestor_folder_ids=[PORTAL_ROOT_FOLDER_ID],
         type=SearchForContentType.FILE,
         limit=limit,
