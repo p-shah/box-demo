@@ -15,6 +15,13 @@ export default function SummaryCard({ state, error, data, onRun }) {
         .filter(Boolean)
     : []
 
+  // Box AI is prompted not to, but sometimes still closes with a
+  // conversational follow-up ("Want talking points for this?") — there's no
+  // chat to reply in here, so drop it if it shows up as the last line.
+  if (bullets.length > 1 && /\?\s*$/.test(bullets[bullets.length - 1])) {
+    bullets.pop()
+  }
+
   return (
     <div className="card">
       <div className="card-heading">

@@ -43,6 +43,13 @@ export const api = {
       body: JSON.stringify({ fileIds, fileNames, clientName }),
     }),
 
+  getHoldingsDiff: ({ fileIds, fileNames, clientName }) =>
+    request('/documents/holdings-diff', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fileIds, fileNames, clientName }),
+    }),
+
   createShareLink: (fileId, { fileName, clientName, daysValid }) =>
     request(`/documents/${fileId}/share`, {
       method: 'POST',
@@ -54,4 +61,6 @@ export const api = {
     `${BASE}/documents/${fileId}/content?fileName=${encodeURIComponent(fileName)}`,
 
   getActivity: () => request('/activity'),
+
+  search: (query) => request(`/search?q=${encodeURIComponent(query)}`),
 }

@@ -51,6 +51,7 @@ HOLDINGS_HEADER_STYLE = TableStyle(
 
 
 def money(value):
+    value += 0.0  # normalize -0.0 to 0.0, which otherwise formats as "-0.00"
     if value < 0:
         return f"(${abs(value):,.2f})"
     return f"${value:,.2f}"
@@ -245,6 +246,63 @@ def main():
             "Performance was led by strong global equity returns, supported by steady "
             "income from fixed income and real asset allocations. A scheduled trust "
             "distribution of $50,000 was made during the quarter per the trust agreement."
+        ),
+    )
+
+    # A third client — conservative, income-focused retirement trust. No
+    # new contributions, a regular distribution, and a heavy bond/dividend
+    # tilt, for demoing a very different holdings mix and risk profile.
+    build_statement(
+        filename="whitfield_q3_statement.pdf",
+        client_name="Whitfield Retirement Trust",
+        account_number="WT-52104",
+        quarter_label="Q3 2026",
+        period_label="July 1 - September 30, 2026",
+        beginning=2150780.30,
+        contributions=0.00,
+        withdrawals=32000.00,
+        net_gain=41206.90,
+        ending=2159987.20,
+        holdings=[
+            ("Core Bond Fund", "CBFX", 12500.00, 98.71, 1233875.00),
+            ("Dividend Equity Fund", "DIVQX", 8200.00, 76.40, 626480.00),
+            ("Municipal Bond Fund", "MUBX", 4300.00, 54.30, 233490.00),
+            ("Cash & equivalents", None, None, None, 66142.20),
+        ],
+        performance_note=(
+            "Performance was steady and income-driven, consistent with the trust's "
+            "conservative mandate. Dividend equity holdings contributed modestly to "
+            "growth while the bond allocation provided stable income to support the "
+            "quarter's distribution."
+        ),
+    )
+
+    # A fourth client — growth/alternatives-focused family office. A capital
+    # call, a down quarter driven by private equity marks, and a holdings
+    # mix (growth equity, PE, hedge strategies) unlike any other client.
+    build_statement(
+        filename="nakamura_q3_statement.pdf",
+        client_name="Nakamura Family Office",
+        account_number="NFO-30188",
+        quarter_label="Q3 2026",
+        period_label="July 1 - September 30, 2026",
+        beginning=8420150.75,
+        contributions=250000.00,
+        withdrawals=0.00,
+        net_gain=-186340.20,
+        ending=8483810.55,
+        holdings=[
+            ("Growth Equity Fund", "GRWTX", 18500.00, 210.44, 3893140.00),
+            ("Private Equity Fund", "PEFX", 4200.00, 612.75, 2573550.00),
+            ("Hedge Strategies Fund", "HDGX", 3100.00, 342.10, 1060510.00),
+            ("Core Bond Fund", "CBFX", 6800.00, 98.71, 671228.00),
+            ("Cash & equivalents", None, None, None, 285382.55),
+        ],
+        performance_note=(
+            "Portfolio performance was pressured by a pullback in growth equities and "
+            "mark-to-market weakness in the private equity allocation, partially offset "
+            "by hedge fund strategies that helped limit downside. A scheduled capital "
+            "call of $250,000 was funded during the quarter."
         ),
     )
 

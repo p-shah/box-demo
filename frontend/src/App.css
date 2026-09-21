@@ -9,7 +9,7 @@
 .portal-topbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 20px;
   padding: 14px 24px;
   background: linear-gradient(120deg, var(--brand-navy-deep), var(--brand-navy));
   color: var(--text-on-navy);
@@ -17,10 +17,12 @@
   flex-shrink: 0;
 }
 
+
 .portal-brand {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-shrink: 0;
 }
 
 .portal-brand-mark {
@@ -72,6 +74,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-shrink: 0;
 }
 
 .portal-topbar-actions .primary-button {
@@ -81,6 +84,94 @@
 
 .portal-topbar-actions .primary-button:hover {
   background: var(--brand-gold-soft);
+}
+
+/* Global search */
+
+.search-bar {
+  position: relative;
+  flex: 1;
+  max-width: 440px;
+  margin: 0 auto;
+}
+
+.search-input {
+  width: 100%;
+  font-size: 13px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-on-navy);
+  font-family: inherit;
+}
+
+.search-input::placeholder {
+  color: var(--text-on-navy-muted);
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--brand-gold);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.search-results {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background: var(--surface-card);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: 0 16px 40px rgba(11, 11, 11, 0.2);
+  max-height: 320px;
+  overflow-y: auto;
+  z-index: 40;
+}
+
+.search-results-empty {
+  padding: 12px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.search-result-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  text-align: left;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  padding: 10px 12px;
+  cursor: pointer;
+  font: inherit;
+  color: var(--text-primary);
+}
+
+.search-result-item:last-child {
+  border-bottom: none;
+}
+
+.search-result-item:hover {
+  background: var(--surface-sunken);
+}
+
+.search-result-name {
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.search-result-client {
+  font-size: 12px;
+  color: var(--text-muted);
+  flex-shrink: 0;
 }
 
 /* Body grid */
@@ -424,6 +515,12 @@
   align-items: start;
 }
 
+/* Multi-select mode has no PDF preview eating space, and the diff table
+   needs real width — flip the ratio so the AI/diff panels get the room. */
+.detail-columns.is-multi {
+  grid-template-columns: 320px 1fr;
+}
+
 .detail-viewer {
   background: var(--surface-sunken);
   border: 1px solid var(--border);
@@ -514,6 +611,74 @@
 
 .card-error {
   font-size: 12px;
+  color: var(--critical);
+}
+
+.card-empty {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* Holdings diff table */
+
+.diff-table-scroll {
+  overflow-x: auto;
+}
+
+.diff-table {
+  width: 100%;
+  min-width: 460px;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.diff-table th {
+  text-align: left;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+  font-weight: 700;
+  padding: 0 8px 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.diff-table td {
+  padding: 8px 8px 8px 0;
+  border-bottom: 1px solid var(--gridline);
+  vertical-align: top;
+}
+
+.diff-table tr:last-child td {
+  border-bottom: none;
+}
+
+.diff-asset-name {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.diff-asset-ticker {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.diff-numeric {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.diff-delta {
+  font-size: 11px;
+  font-weight: 700;
+  margin-top: 3px;
+}
+
+.diff-delta-good {
+  color: var(--good-text);
+}
+
+.diff-delta-critical {
   color: var(--critical);
 }
 

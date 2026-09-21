@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from './api'
 import ClientList from './components/ClientList'
 import DocumentList from './components/DocumentList'
@@ -6,6 +6,7 @@ import DocumentDetail from './components/DocumentDetail'
 import ActivityFeed from './components/ActivityFeed'
 import UploadModal from './components/UploadModal'
 import UploadStatus from './components/UploadStatus'
+import SearchBar from './components/SearchBar'
 import './App.css'
 
 export default function App() {
@@ -20,6 +21,7 @@ export default function App() {
   const [activity, setActivity] = useState([])
   const [uploadOpen, setUploadOpen] = useState(false)
   const [pendingUpload, setPendingUpload] = useState(null)
+  const pendingDocIdRef = useRef(null)
 
   const refreshActivity = useCallback(() => {
     api.getActivity().then(setActivity).catch(() => {})
@@ -48,7 +50,12 @@ export default function App() {
       .listDocuments(client.id)
       .then((docs) => {
         setDocuments(docs)
-        setSelectedIds(new Set(docs.length ? [docs[0].id] : []))
+        // A search result click stashes the doc it wants selected here —
+        // land on that one instead of defaulting to the first document.
+        const pendingId = pendingDocIdRef.current
+        pendingDocIdRef.current = null
+        const target = pendingId && docs.find((doc) => doc.id === pendingId)
+        setSelectedIds(new Set(target ? [target.id] : docs.length ? [docs[0].id] : []))
       })
       .catch(() => setDocuments([]))
       .finally(() => setDocumentsLoading(false))
@@ -91,6 +98,12 @@ export default function App() {
       })
   }
 
+  const handleSearchSelect = (result) => {
+    if (!result.client) return
+    pendingDocIdRef.current = result.id
+    setSelectedClient({ id: result.client.id, name: result.client.name })
+  }
+
   const selectedDocuments = documents.filter((doc) => selectedIds.has(doc.id))
 
   return (
@@ -103,6 +116,7 @@ export default function App() {
             <div className="portal-brand-subtitle">Wealth Management Digital Experience</div>
           </div>
         </div>
+        <SearchBar onSelect={handleSearchSelect} />
         <div className="portal-topbar-actions">
           <button className="primary-button" onClick={() => setUploadOpen(true)}>
             + Upload statement

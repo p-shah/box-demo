@@ -28,16 +28,26 @@ backend/    Flask API — wraps box-sdk-gen (auth, folders, upload,
             metadata, Box AI ask/extract, shared links)
 ```
 
-The frontend never talks to Box directly; the backend holds the developer
-token and does all Box API calls.
+The frontend never talks to Box directly; the backend authenticates via
+Client Credentials Grant (CCG) and does all Box API calls.
 
 ## Setup
 
 ### 1. Box
 
+- A **Custom App** in the [Box developer console](https://app.box.com/developers/console)
+  with auth method **"Server Authentication (Client Credentials Grant)"**,
+  authorized by an enterprise admin (Admin Console → Apps → Custom Apps
+  Manager). Note its Client ID and Client Secret.
+- If acting as your own account (`BOX_USER_ID`, the simpler path — no
+  re-sharing needed), the app also needs the **"Generate User Access
+  Tokens"** scope approved by an admin. If acting as the enterprise Service
+  Account instead (`BOX_ENTERPRISE_ID`), that account starts with no folder
+  access — collaborate it into the portal root folder first.
 - A metadata template `clientReportInfo` (scope `enterprise`) must exist —
-  run `python setup_metadata.py` once (needs `BOX_DEVELOPER_TOKEN` set) if
-  it hasn't already been created.
+  run `python setup_metadata.py` once if it hasn't already been created.
+  This one-off script still uses a plain developer token (`BOX_DEVELOPER_TOKEN`)
+  since it's a single manual run, not the running app.
 - A portal root folder in Box holding one subfolder per client. Note its
   folder ID.
 
@@ -47,13 +57,14 @@ token and does all Box API calls.
 cd backend
 python3 -m venv .venv && source .venv/bin/activate   # or reuse the repo's .venv
 pip install -r requirements.txt
-cp .env.example .env   # fill in BOX_DEVELOPER_TOKEN and BOX_PORTAL_ROOT_FOLDER_ID
+cp .env.example .env   # fill in BOX_CLIENT_ID, BOX_CLIENT_SECRET, BOX_USER_ID
+                        # (or BOX_ENTERPRISE_ID), and BOX_PORTAL_ROOT_FOLDER_ID
 python app.py           # http://localhost:5001 — auto-loads .env via python-dotenv
 ```
 
-Box developer tokens expire after 60 minutes — regenerate one from the
-[Box developer console](https://app.box.com/developers/console) before each
-demo session and re-export it.
+Unlike a developer token, CCG credentials don't expire every 60 minutes —
+the SDK refreshes the access token automatically, so the backend process
+can stay up across a whole demo session without re-pasting anything.
 
 ### 3. Frontend
 

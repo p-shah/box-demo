@@ -54,6 +54,17 @@ def get_documents(folder_id):
         return _error_response(exc)
 
 
+@app.get("/api/search")
+def get_search():
+    query = request.args.get("q", "").strip()
+    if not query:
+        return jsonify([])
+    try:
+        return jsonify(box_service.search_documents(query))
+    except BoxSDKError as exc:
+        return _error_response(exc)
+
+
 @app.post("/api/documents")
 def post_document():
     if "file" not in request.files:
@@ -101,6 +112,24 @@ def post_highlights():
         return jsonify({"error": "fileIds is required"}), 400
     try:
         return jsonify(box_service.get_ai_highlights(file_ids, file_names, client_name))
+    except BoxSDKError as exc:
+        return _error_response(exc)
+
+
+@app.post("/api/documents/holdings-diff")
+def post_holdings_diff():
+    body = request.get_json(silent=True) or {}
+    file_ids = body.get("fileIds") or []
+    file_names = body.get("fileNames") or []
+    client_name = body.get("clientName", "Client")
+    if len(file_ids) != 2 or len(file_names) != 2:
+        return jsonify({"error": "holdings-diff requires exactly two documents, in [from, to] order"}), 400
+    try:
+        return jsonify(
+            box_service.get_holdings_diff(
+                file_ids[0], file_names[0], file_ids[1], file_names[1], client_name
+            )
+        )
     except BoxSDKError as exc:
         return _error_response(exc)
 

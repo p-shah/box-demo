@@ -8,13 +8,16 @@ but exposed over HTTP for the custom React front end instead of a script.
 """
 
 import datetime
+import json
 import os
+import re
 import threading
 import uuid
 
 from box_sdk_gen import (
+    BoxCCGAuth,
     BoxClient,
-    BoxDeveloperTokenAuth,
+    CCGConfig,
     CreateFolderParent,
     UpdateFileByIdParent,
     UploadFileAttributes,
@@ -29,6 +32,7 @@ from box_sdk_gen import (
     AiItemAskTypeField,
     AiItemBase,
     CreateAiExtractStructuredFields,
+    SearchForContentType,
 )
 from box_sdk_gen.box.errors import BoxSDKError
 
@@ -39,7 +43,9 @@ _SUMMARY_PROMPT = (
     "You are briefing a wealth management advisor before a client call. "
     "In 3-4 short bullet points, summarize this statement: overall performance "
     "this period, the biggest driver of the change, and anything the advisor "
-    "should flag to the client. Be concise and use plain English, no jargon."
+    "should flag to the client. Be concise and use plain English, no jargon. "
+    "End after the last bullet point — do not add a closing remark, offer, "
+    "or follow-up question."
 )
 
 _MULTI_SUMMARY_PROMPT = (
@@ -48,7 +54,8 @@ _MULTI_SUMMARY_PROMPT = (
     "summarize what changed across these periods: the overall trend, the "
     "biggest driver of that trend, and anything the advisor should flag to "
     "the client. Reference specific periods where it's relevant. Be concise "
-    "and use plain English, no jargon."
+    "and use plain English, no jargon. End after the last bullet point — do "
+    "not add a closing remark, offer, or follow-up question."
 )
 
 _CLASSIFICATION_FIELDS = [
@@ -73,6 +80,16 @@ _CLASSIFICATION_FIELDS = [
 ]
 
 UNSORTED_CLIENT_NAME = "Unsorted"
+
+_HOLDINGS_PROMPT = (
+    "List every line item in this statement's Holdings table. Respond with "
+    "ONLY a JSON array — no prose, no markdown code fences. Each element must "
+    "be exactly: {\"asset\": string, \"ticker\": string or null, "
+    "\"shares\": number or null, \"marketValue\": number}. Use plain numbers "
+    "for shares and marketValue (no currency symbols or commas). Skip rows "
+    "with no market value (e.g. a totals row). If there is no holdings table, "
+    "return []."
+)
 
 _HIGHLIGHT_FIELDS = [
     CreateAiExtractStructuredFields(
@@ -162,14 +179,31 @@ def get_client() -> BoxClient:
     global _client
     with _client_lock:
         if _client is None:
-            token = os.environ.get("BOX_DEVELOPER_TOKEN")
-            if not token:
+            client_id = os.environ.get("BOX_CLIENT_ID")
+            client_secret = os.environ.get("BOX_CLIENT_SECRET")
+            user_id = os.environ.get("BOX_USER_ID")
+            enterprise_id = os.environ.get("BOX_ENTERPRISE_ID")
+            if not client_id or not client_secret:
                 raise RuntimeError(
-                    "Set BOX_DEVELOPER_TOKEN before running the backend. "
-                    "Developer tokens expire after 60 minutes and must be "
-                    "regenerated from the Box developer console."
+                    "Set BOX_CLIENT_ID and BOX_CLIENT_SECRET before running the backend "
+                    "— from a Custom App in the Box developer console configured for "
+                    "Client Credentials Grant and authorized by an enterprise admin."
                 )
-            auth = BoxDeveloperTokenAuth(token=token)
+            if not user_id and not enterprise_id:
+                raise RuntimeError(
+                    "Set BOX_USER_ID (to act as your own Box account) or "
+                    "BOX_ENTERPRISE_ID (to act as the enterprise service account) "
+                    "so Client Credentials Grant knows which identity to use."
+                )
+            # Unlike a developer token, this refreshes itself automatically —
+            # no more re-pasting a token every 60 minutes.
+            config = CCGConfig(
+                client_id=client_id,
+                client_secret=client_secret,
+                user_id=user_id or None,
+                enterprise_id=enterprise_id or None,
+            )
+            auth = BoxCCGAuth(config=config)
             _client = BoxClient(auth=auth)
         return _client
 
@@ -247,6 +281,33 @@ def list_documents(folder_id: str) -> list:
             }
         )
     return documents
+
+
+def search_documents(query: str, limit: int = 25) -> list:
+    """
+    Full-text search across every client's statements at once, via Box's
+    real content-search index (file names AND the text inside the PDFs) —
+    scoped to the portal root so results never span outside this app's data.
+    """
+    client = get_client()
+    results = client.search.search_for_content(
+        query=query,
+        ancestor_folder_ids=[PORTAL_ROOT_FOLDER_ID],
+        type=SearchForContentType.FILE,
+        limit=limit,
+        fields=["name", "parent"],
+    )
+    matches = []
+    for entry in results.entries or []:
+        parent = getattr(entry, "parent", None)
+        matches.append(
+            {
+                "id": entry.id,
+                "name": entry.name,
+                "client": {"id": parent.id, "name": parent.name} if parent else None,
+            }
+        )
+    return matches
 
 
 def classify_document(file_id: str) -> dict:
@@ -382,6 +443,125 @@ def get_ai_highlights(file_ids: list, file_names: list, client_name: str) -> dic
     )
     log_action(client_name, _label(file_names), "Box AI structured extraction generated")
     return dict(response.answer or {})
+
+
+def _extract_json_array(text: str) -> list:
+    if not text:
+        return []
+    text = text.strip()
+    fence_match = re.match(r"^```(?:json)?\s*(.*?)\s*```$", text, re.DOTALL)
+    if fence_match:
+        text = fence_match.group(1).strip()
+    candidates = [text]
+    start, end = text.find("["), text.rfind("]")
+    if start != -1 and end != -1 and end > start:
+        candidates.append(text[start : end + 1])
+    for candidate in candidates:
+        try:
+            data = json.loads(candidate)
+        except (json.JSONDecodeError, ValueError):
+            continue
+        if isinstance(data, list):
+            return data
+    return []
+
+
+def _to_number(value):
+    if value is None:
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    try:
+        return float(str(value).replace(",", "").replace("$", "").strip())
+    except ValueError:
+        return None
+
+
+def get_holdings(file_id: str) -> list:
+    """
+    Box AI's structured-extract fields are flat key/value pairs, not a
+    repeating table, so a full holdings table is pulled via `ask` with a
+    strict JSON-only prompt instead. The diff math below is done in Python,
+    never by the LLM, so it's always exact.
+    """
+    client = get_client()
+    response = client.ai.create_ai_ask(
+        mode=CreateAiAskMode.SINGLE_ITEM_QA,
+        prompt=_HOLDINGS_PROMPT,
+        items=[AiItemAsk(id=file_id, type=AiItemAskTypeField.FILE)],
+    )
+    rows = []
+    for row in _extract_json_array(response.answer):
+        if not isinstance(row, dict):
+            continue
+        asset = str(row.get("asset") or "").strip()
+        if not asset:
+            continue
+        rows.append(
+            {
+                "asset": asset,
+                "ticker": (str(row["ticker"]).strip() if row.get("ticker") else None),
+                "shares": _to_number(row.get("shares")),
+                "marketValue": _to_number(row.get("marketValue")),
+            }
+        )
+    return rows
+
+
+def _holdings_key(row: dict) -> str:
+    return (row.get("ticker") or row["asset"]).strip().lower()
+
+
+def get_holdings_diff(from_id: str, from_name: str, to_id: str, to_name: str, client_name: str) -> dict:
+    from_holdings = get_holdings(from_id)
+    to_holdings = get_holdings(to_id)
+
+    from_map = {_holdings_key(row): row for row in from_holdings}
+    to_map = {_holdings_key(row): row for row in to_holdings}
+    seen_keys = list(dict.fromkeys(list(from_map.keys()) + list(to_map.keys())))
+
+    rows = []
+    for key in seen_keys:
+        before = from_map.get(key)
+        after = to_map.get(key)
+        if before and not after:
+            status = "removed"
+        elif after and not before:
+            status = "new"
+        else:
+            before_value, after_value = before.get("marketValue"), after.get("marketValue")
+            if before_value is not None and after_value is not None:
+                if after_value > before_value:
+                    status = "increased"
+                elif after_value < before_value:
+                    status = "decreased"
+                else:
+                    status = "unchanged"
+            else:
+                status = "unchanged"
+
+        value_from = before.get("marketValue") if before else None
+        value_to = after.get("marketValue") if after else None
+        value_delta = (
+            value_to - value_from if value_from is not None and value_to is not None else None
+        )
+        rows.append(
+            {
+                "asset": (after or before)["asset"],
+                "ticker": (after or before).get("ticker"),
+                "sharesFrom": before.get("shares") if before else None,
+                "sharesTo": after.get("shares") if after else None,
+                "valueFrom": value_from,
+                "valueTo": value_to,
+                "valueDelta": value_delta,
+                "status": status,
+            }
+        )
+
+    rows.sort(key=lambda r: abs(r["valueDelta"]) if r["valueDelta"] is not None else -1, reverse=True)
+
+    log_action(client_name, f"{from_name} → {to_name}", "Box AI holdings comparison generated")
+    return {"rows": rows}
 
 
 def create_shared_link(file_id: str, file_name: str, client_name: str, days_valid: int = 14) -> dict:
